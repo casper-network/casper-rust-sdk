@@ -1,4 +1,4 @@
 pub mod api;
-pub mod cryptography;
+pub mod crypto;
 
 mod utils;
