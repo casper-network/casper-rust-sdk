@@ -1,36 +1,39 @@
-use std::any::Any;
+use std::collections::HashMap;
 
 use eventsource_stream::{Event, EventStreamError, Eventsource};
 use futures::stream::{BoxStream, TryStreamExt};
-use tokio::time::Timeout;
 
 use super::{error::SseError, types::EventFilter, SseData};
 
+//TODO: take it from .env file
 const DEFAULT_SSE_SERVER: &str = "http://localhost:18101";
 const DEFAULT_EVENT_CHANNEL: &str = "/events";
 
 type BoxedEventStream = BoxStream<'static, Result<Event, EventStreamError<reqwest::Error>>>;
 
-pub struct CasperEventClient {
+pub struct EventClient {
     pub url: String,
     pub event_stream: Option<BoxedEventStream>,
+    pub event_handlers: HashMap<EventFilter, Vec<Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
-impl Default for CasperEventClient {
+impl Default for EventClient {
     fn default() -> Self {
         let url = format!("{}{}", DEFAULT_SSE_SERVER, DEFAULT_EVENT_CHANNEL);
         Self {
             url,
             event_stream: None,
+            event_handlers: HashMap::new(),
         }
     }
 }
 
-impl CasperEventClient {
+impl EventClient {
     pub fn new(url: &str) -> Self {
-        CasperEventClient {
+        EventClient {
             url: url.to_string(),
             event_stream: None,
+            event_handlers: HashMap::new(),
         }
     }
 
@@ -60,41 +63,43 @@ impl CasperEventClient {
         Ok(())
     }
 
-    // Wait for a specific event type (no timeout)
-    pub async fn wait_for_event(
-        &mut self,
-        event_type: EventFilter,
-        // timeout: u64,
-        // from_id: u64,
-    ) -> Result<SseData, SseError> {
-        // Take stream out of state.
-        let mut event_stream = match self.event_stream.take() {
-            Some(s) => Ok(s),
-            None => Err(SseError::NotConnected),
-        }?;
-        //TODO: add a check for a specific event type, if there is a match return the event from the function
+    pub fn on_event<F>(&mut self, event_type: EventFilter, handler: F) -> usize
+    where
+        F: Fn() + 'static + Send + Sync,
+    {
+        let boxed_handler = Box::new(handler);
+        let handlers = self.event_handlers.entry(event_type).or_default();
+        handlers.push(boxed_handler);
+        //TODO: we need proper, unique ids and probably additional map in the client for storing it
+        handlers.len()
+    }
+
+    pub fn remove_handler(&self, event_type: EventFilter, id: usize) {
+        unimplemented!()
+    }
+
+    pub async fn run(&mut self) -> Result<(), SseError> {
+        // Ensure the client is connected
+        let mut event_stream = self.event_stream.take().ok_or(SseError::NotConnected)?;
+
         while let Some(event) = event_stream.try_next().await? {
             let data: SseData = serde_json::from_str(&event.data)?;
-            if data.type_label() == "BlockAdded" {
-                return Ok(data);
-            }
-            // match data {
-            //     received_event if received_event.type_id() == event_type.type_id() => {
-            //         return Ok(received_event);
-            //     }
-            //     SseData::ApiVersion(_) => Err(SseError::UnexpectedHandshake)?,
-            //     SseData::BlockAdded(_) => {}
-            //     SseData::DeployAccepted(_) => {}
-            //     SseData::DeployProcessed(_) => {}
-            //     SseData::Fault(_) => {}
-            //     SseData::FinalitySignature(_) => {}
-            //     SseData::DeployExpired(_) => {}
-            //     SseData::Step(_) => {}
-            //     SseData::Shutdown => Err(SseError::NodeShutdown)?,
-            // }
-        }
 
+            match data {
+                SseData::ApiVersion(_) => return Err(SseError::UnexpectedHandshake), // Should only happen once at connection
+                SseData::Shutdown => return Err(SseError::NodeShutdown),
+
+                // For each type, find and invoke registered handlers
+                event => {
+                    if let Some(handlers) = self.event_handlers.get_mut(&event.event_type()) {
+                        for handler in handlers {
+                            handler(); // Invoke each handler for the event
+                        }
+                    }
+                }
+            }
+        }
         // Stream was exhausted.
-        Err(SseError::StreamExhausted)?
+        Err(SseError::StreamExhausted)
     }
 }
