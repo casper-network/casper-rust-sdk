@@ -34,4 +34,7 @@ pub enum SseError {
     /// Connection must be stopped, as received shutdown event.
     #[error("Node shutdown")]
     NodeShutdown,
+
+    #[error("Timeout while waiting for event")]
+    Timeout,
 }
