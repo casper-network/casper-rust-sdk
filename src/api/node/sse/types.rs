@@ -16,6 +16,7 @@ pub enum EventFilter {
     Other,
 }
 
+// TODO: add full deserialization of the json
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum SseData {
     ApiVersion(casper_types::ProtocolVersion),
@@ -30,7 +31,6 @@ pub enum SseData {
     Shutdown,
 }
 
-//TODO: this probably can be done more elegant
 impl SseData {
     pub fn event_type(&self) -> EventFilter {
         match self {

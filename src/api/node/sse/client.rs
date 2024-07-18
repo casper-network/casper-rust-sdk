@@ -17,7 +17,8 @@ type BoxedEventStream = BoxStream<'static, Result<Event, EventStreamError<reqwes
 pub struct EventClient {
     pub url: String,
     pub event_stream: Option<BoxedEventStream>,
-    pub event_handlers: HashMap<EventFilter, Vec<Box<dyn Fn() + Send + Sync + 'static>>>,
+    pub next_event_id: u64,
+    pub event_handlers: HashMap<EventFilter, HashMap<u64, Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
 impl Default for EventClient {
@@ -26,6 +27,7 @@ impl Default for EventClient {
         Self {
             url,
             event_stream: None,
+            next_event_id: 0,
             event_handlers: HashMap::new(),
         }
     }
@@ -36,6 +38,7 @@ impl EventClient {
         EventClient {
             url: url.to_string(),
             event_stream: None,
+            next_event_id: 0,
             event_handlers: HashMap::new(),
         }
     }
@@ -66,19 +69,23 @@ impl EventClient {
         Ok(())
     }
 
-    pub fn on_event<F>(&mut self, event_type: EventFilter, handler: F) -> usize
+    pub fn on_event<F>(&mut self, event_type: EventFilter, handler: F) -> u64
     where
         F: Fn() + 'static + Send + Sync,
     {
         let boxed_handler = Box::new(handler);
         let handlers = self.event_handlers.entry(event_type).or_default();
-        handlers.push(boxed_handler);
-        //TODO: we need proper, unique ids and probably additional map in the client for storing it
-        handlers.len()
+        let event_id = self.next_event_id;
+        handlers.insert(event_id, boxed_handler);
+        self.next_event_id += 1;
+        event_id
     }
 
-    pub fn remove_handler(&self, event_type: EventFilter, id: usize) {
-        unimplemented!()
+    pub fn remove_handler(&mut self, event_type: EventFilter, id: u64) -> bool {
+        match self.event_handlers.get_mut(&event_type) {
+            Some(handlers_for_type) => handlers_for_type.remove(&id).is_some(),
+            None => false,
+        }
     }
 
     //TODO: do we need to look for any registered handlers in this function? Not sure what is the relation between this and run function.
@@ -130,7 +137,7 @@ impl EventClient {
                 // For each type, find and invoke registered handlers
                 event => {
                     if let Some(handlers) = self.event_handlers.get_mut(&event.event_type()) {
-                        for handler in handlers {
+                        for handler in handlers.values() {
                             handler(); // Invoke each handler for the event
                         }
                     }

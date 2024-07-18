@@ -28,14 +28,49 @@ mod tests {
         };
 
         let event_type = EventFilter::BlockAdded;
-        client.on_event(event_type, test_handler);
+        let mut handler_id = client.on_event(event_type, test_handler);
 
-        let handlers = client.event_handlers.get(&event_type).unwrap();
+        let mut handlers = client.event_handlers.get(&event_type).unwrap();
         assert_eq!(handlers.len(), 1);
+        assert!(handlers.contains_key(&handler_id));
 
-        client.on_event(event_type, test_handler);
-        let handlers = client.event_handlers.get(&event_type).unwrap();
+        handler_id = client.on_event(event_type, test_handler);
+        handlers = client.event_handlers.get(&event_type).unwrap();
         assert_eq!(handlers.len(), 2);
+        assert!(handlers.contains_key(&handler_id));
+    }
+
+    #[test]
+    fn test_remove_handler() {
+        let mut client = EventClient::new("test_url");
+
+        // Create a simple test handler
+        let test_handler = || {
+            println!("Test handler called!");
+        };
+
+        let event_type = EventFilter::BlockAdded;
+        let mut handler_id = client.on_event(event_type, test_handler);
+
+        let mut handlers = client.event_handlers.get(&event_type).unwrap();
+        assert_eq!(handlers.len(), 1);
+        assert!(handlers.contains_key(&handler_id));
+
+        handler_id = client.on_event(event_type, test_handler);
+        handlers = client.event_handlers.get(&event_type).unwrap();
+        assert_eq!(handlers.len(), 2);
+        assert!(handlers.contains_key(&handler_id));
+
+        // Remove the handler
+        let removed = client.remove_handler(event_type, handler_id);
+
+        assert!(removed, "Handler should have been removed");
+        handlers = client.event_handlers.get(&event_type).unwrap();
+        assert_eq!(handlers.len(), 1);
+        assert!(
+            !handlers.contains_key(&handler_id),
+            "Handler should have been removed"
+        );
     }
 
     #[tokio::test]
