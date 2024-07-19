@@ -13,10 +13,12 @@ pub enum EventType {
     Fault,
     FinalitySignature,
     Step,
-    Other,
+    Shutdown,
 }
 
-// TODO: add full deserialization of the json
+/// Casper does not expose SSE types directly, so we have to reimplement them.
+/// Source: https://github.com/casper-network/casper-node/blob/8a9a864212b7c20fc17e1d0106b02c813ffded9d/node/src/components/event_stream_server/sse_server.rs#L56.
+/// TODO: Add full deserialization details.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum EventInfo {
     ApiVersion(casper_types::ProtocolVersion),
@@ -43,7 +45,7 @@ impl EventInfo {
             EventInfo::Fault(_) => EventType::Fault,
             EventInfo::FinalitySignature(_) => EventType::FinalitySignature,
             EventInfo::Step(_) => EventType::Step,
-            EventInfo::Shutdown => EventType::Other,
+            EventInfo::Shutdown => EventType::Shutdown,
         }
     }
 }

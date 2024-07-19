@@ -94,7 +94,7 @@ impl Client {
         event_type: EventType,
         predicate: F,
         timeout: Duration,
-    ) -> Result<EventInfo, SseError>
+    ) -> Result<Option<EventInfo>, SseError>
     where
         F: Fn(&EventInfo) -> bool + Send + Sync,
     {
