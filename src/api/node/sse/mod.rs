@@ -1,5 +1,5 @@
 pub mod client;
 pub mod error;
 pub mod types;
-pub use client::EventClient;
-pub use types::SseData;
+pub use client::Client;
+pub use types::EventInfo;

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 //copied from casper-sidecar
 
 #[derive(Clone, Copy, Eq, PartialEq, Debug, Hash)]
-pub enum EventFilter {
+pub enum EventType {
     ApiVersion,
     SidecarVersion,
     BlockAdded,
@@ -18,7 +18,7 @@ pub enum EventFilter {
 
 // TODO: add full deserialization of the json
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
-pub enum SseData {
+pub enum EventInfo {
     ApiVersion(casper_types::ProtocolVersion),
     SidecarVersion(serde_json::Value),
     BlockAdded(serde_json::Value),
@@ -31,19 +31,19 @@ pub enum SseData {
     Shutdown,
 }
 
-impl SseData {
-    pub fn event_type(&self) -> EventFilter {
+impl EventInfo {
+    pub fn event_type(&self) -> EventType {
         match self {
-            SseData::ApiVersion(_) => EventFilter::ApiVersion,
-            SseData::SidecarVersion(_) => EventFilter::Other,
-            SseData::BlockAdded(_) => EventFilter::BlockAdded,
-            SseData::TransactionAccepted(_) => EventFilter::TransactionAccepted,
-            SseData::TransactionProcessed(_) => EventFilter::TransactionProcessed,
-            SseData::TransactionExpired(_) => EventFilter::TransactionExpired,
-            SseData::Fault(_) => EventFilter::Fault,
-            SseData::FinalitySignature(_) => EventFilter::FinalitySignature,
-            SseData::Step(_) => EventFilter::Step,
-            SseData::Shutdown => EventFilter::Other,
+            EventInfo::ApiVersion(_) => EventType::ApiVersion,
+            EventInfo::SidecarVersion(_) => EventType::Other,
+            EventInfo::BlockAdded(_) => EventType::BlockAdded,
+            EventInfo::TransactionAccepted(_) => EventType::TransactionAccepted,
+            EventInfo::TransactionProcessed(_) => EventType::TransactionProcessed,
+            EventInfo::TransactionExpired(_) => EventType::TransactionExpired,
+            EventInfo::Fault(_) => EventType::Fault,
+            EventInfo::FinalitySignature(_) => EventType::FinalitySignature,
+            EventInfo::Step(_) => EventType::Step,
+            EventInfo::Shutdown => EventType::Other,
         }
     }
 }

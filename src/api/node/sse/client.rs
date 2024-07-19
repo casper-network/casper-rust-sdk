@@ -6,7 +6,7 @@ use std::{
 use eventsource_stream::{Event, EventStreamError, Eventsource};
 use futures::stream::{BoxStream, TryStreamExt};
 
-use super::{error::SseError, types::EventFilter, SseData};
+use super::{error::SseError, types::EventType, EventInfo};
 
 //TODO: take it from .env file
 const DEFAULT_SSE_SERVER: &str = "http://localhost:18101";
@@ -14,14 +14,14 @@ const DEFAULT_EVENT_CHANNEL: &str = "/events";
 
 type BoxedEventStream = BoxStream<'static, Result<Event, EventStreamError<reqwest::Error>>>;
 
-pub struct EventClient {
+pub struct Client {
     pub url: String,
     pub event_stream: Option<BoxedEventStream>,
     pub next_event_id: u64,
-    pub event_handlers: HashMap<EventFilter, HashMap<u64, Box<dyn Fn() + Send + Sync + 'static>>>,
+    pub event_handlers: HashMap<EventType, HashMap<u64, Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
-impl Default for EventClient {
+impl Default for Client {
     fn default() -> Self {
         let url = format!("{}{}", DEFAULT_SSE_SERVER, DEFAULT_EVENT_CHANNEL);
         Self {
@@ -33,9 +33,9 @@ impl Default for EventClient {
     }
 }
 
-impl EventClient {
+impl Client {
     pub fn new(url: &str) -> Self {
-        EventClient {
+        Client {
             url: url.to_string(),
             event_stream: None,
             next_event_id: 0,
@@ -56,9 +56,9 @@ impl EventClient {
             .try_next()
             .await?
             .ok_or(SseError::StreamExhausted)?;
-        let handshake_data: SseData = serde_json::from_str(&handshake_event.data)?;
+        let handshake_data: EventInfo = serde_json::from_str(&handshake_event.data)?;
         let _api_version = match handshake_data {
-            SseData::ApiVersion(v) => Ok(v),
+            EventInfo::ApiVersion(v) => Ok(v),
             _ => Err(SseError::InvalidHandshake),
         }?;
 
@@ -69,7 +69,7 @@ impl EventClient {
         Ok(())
     }
 
-    pub fn on_event<F>(&mut self, event_type: EventFilter, handler: F) -> u64
+    pub fn on_event<F>(&mut self, event_type: EventType, handler: F) -> u64
     where
         F: Fn() + 'static + Send + Sync,
     {
@@ -81,7 +81,7 @@ impl EventClient {
         event_id
     }
 
-    pub fn remove_handler(&mut self, event_type: EventFilter, id: u64) -> bool {
+    pub fn remove_handler(&mut self, event_type: EventType, id: u64) -> bool {
         match self.event_handlers.get_mut(&event_type) {
             Some(handlers_for_type) => handlers_for_type.remove(&id).is_some(),
             None => false,
@@ -91,12 +91,12 @@ impl EventClient {
     //TODO: do we need to look for any registered handlers in this function? Not sure what is the relation between this and run function.
     pub async fn wait_for_event<F>(
         &mut self,
-        event_type: EventFilter,
+        event_type: EventType,
         predicate: F,
         timeout: Duration,
-    ) -> Result<SseData, SseError>
+    ) -> Result<EventInfo, SseError>
     where
-        F: Fn(&SseData) -> bool + Send + Sync,
+        F: Fn(&EventInfo) -> bool + Send + Sync,
     {
         let start_time = Instant::now();
         loop {
@@ -112,7 +112,7 @@ impl EventClient {
                 .try_next()
                 .await?
             {
-                let data: SseData = serde_json::from_str(&event.data)?;
+                let data: EventInfo = serde_json::from_str(&event.data)?;
 
                 if data.event_type() == event_type && predicate(&data) {
                     return Ok(data); //matching event
@@ -128,11 +128,11 @@ impl EventClient {
         let mut event_stream = self.event_stream.take().ok_or(SseError::NotConnected)?;
 
         while let Some(event) = event_stream.try_next().await? {
-            let data: SseData = serde_json::from_str(&event.data)?;
+            let data: EventInfo = serde_json::from_str(&event.data)?;
 
             match data {
-                SseData::ApiVersion(_) => return Err(SseError::UnexpectedHandshake), // Should only happen once at connection
-                SseData::Shutdown => return Err(SseError::NodeShutdown),
+                EventInfo::ApiVersion(_) => return Err(SseError::UnexpectedHandshake), // Should only happen once at connection
+                EventInfo::Shutdown => return Err(SseError::NodeShutdown),
 
                 // For each type, find and invoke registered handlers
                 event => {

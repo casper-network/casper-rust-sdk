@@ -1,15 +1,42 @@
 #[cfg(test)]
 mod tests {
-    use casper_sdk_rs::api::node::sse::{types::EventFilter, EventClient, SseData};
+    use casper_sdk_rs::api::node::sse::{types::EventType, Client, EventInfo};
     use core::panic;
+    use mockito::ServerGuard;
     use std::{
         sync::{Arc, Mutex},
         time::Duration,
     };
 
+    const EVENT_STREAM: &str = concat!(
+        "data: {\"ApiVersion\": \"2.0.0\"}\n\n",
+        "data: {\"BlockAdded\": {\"height\":10}}\n\n",
+        "data: {\"BlockAdded\": {\"height\":11}}\n\n",
+        "data: {\"BlockAdded\": {\"height\":12}}\n\n",
+        "data: {\"TransactionProcessed\": \"test\"}\n\n",
+        "data: {\"BlockAdded\": {\"height\":13}}\n\n",
+        "data: {\"BlockAdded\": {\"height\":14}}\n\n",
+    );
+
+    async fn create_mock_server(event_stream: Option<&str>) -> ServerGuard {
+        let event_stream = match event_stream {
+            Some(e_stream) => e_stream,
+            None => EVENT_STREAM,
+        };
+        let mut server = mockito::Server::new_async().await;
+        server
+            .mock("GET", "/")
+            .with_header("content-type", "text/event-stream")
+            .with_body(event_stream)
+            .create_async()
+            .await;
+        server
+    }
+
     #[tokio::test]
-    async fn test_sse_client_connection() {
-        let mut client = EventClient::default();
+    async fn test_client_connection() {
+        let server = create_mock_server(None).await;
+        let mut client = Client::new(&server.url());
 
         client
             .connect()
@@ -20,14 +47,14 @@ mod tests {
     }
 
     #[test]
-    fn test_on_event_adds_handler() {
-        let mut client = EventClient::new("test_url");
+    fn test_on_event_add_handlers() {
+        let mut client = Client::new("test_url");
 
         let test_handler = || {
             println!("Test handler called!");
         };
 
-        let event_type = EventFilter::BlockAdded;
+        let event_type = EventType::BlockAdded;
         let mut handler_id = client.on_event(event_type, test_handler);
 
         let mut handlers = client.event_handlers.get(&event_type).unwrap();
@@ -42,14 +69,13 @@ mod tests {
 
     #[test]
     fn test_remove_handler() {
-        let mut client = EventClient::new("test_url");
+        let mut client = Client::new("test_url");
 
-        // Create a simple test handler
         let test_handler = || {
             println!("Test handler called!");
         };
 
-        let event_type = EventFilter::BlockAdded;
+        let event_type = EventType::BlockAdded;
         let mut handler_id = client.on_event(event_type, test_handler);
 
         let mut handlers = client.event_handlers.get(&event_type).unwrap();
@@ -61,7 +87,6 @@ mod tests {
         assert_eq!(handlers.len(), 2);
         assert!(handlers.contains_key(&handler_id));
 
-        // Remove the handler
         let removed = client.remove_handler(event_type, handler_id);
 
         assert!(removed, "Handler should have been removed");
@@ -75,22 +100,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_invokes_handlers() {
-        let mut server = mockito::Server::new_async().await;
-        server
-            .mock("GET", "/")
-            .with_header("content-type", "text/event-stream")
-            .with_body(concat!(
-                "data: {\"ApiVersion\": \"1.5.6\"}\n\n",
-                "data: {\"BlockAdded\": \"test\"}\n\n",
-                "data: {\"BlockAdded\": \"test\"}\n\n",
-                "data: {\"BlockAdded\": \"test\"}\n\n",
-                "data: {\"TransactionProcessed\": \"test\"}\n\n",
-                "data: {\"BlockAdded\": \"test\"}\n\n"
-            ))
-            .create_async()
-            .await;
-
-        let mut client = EventClient::new(&server.url());
+        let server = create_mock_server(None).await;
+        let mut client = Client::new(&server.url());
         client.connect().await.unwrap();
 
         let block_added_count = Arc::new(Mutex::new(0));
@@ -114,38 +125,23 @@ mod tests {
             }
         };
 
-        client.on_event(EventFilter::BlockAdded, block_added_handler);
-        client.on_event(EventFilter::TransactionProcessed, tx_processed_handler);
+        client.on_event(EventType::BlockAdded, block_added_handler);
+        client.on_event(EventType::TransactionProcessed, tx_processed_handler);
 
         let _result = client.run().await;
 
-        assert_eq!(*block_added_count.lock().unwrap(), 4);
+        assert_eq!(*block_added_count.lock().unwrap(), 5);
         assert_eq!(*tx_processed_count.lock().unwrap(), 1);
     }
 
     #[tokio::test]
     async fn test_wait_for_event_success() {
-        let mut server = mockito::Server::new_async().await;
-        server
-            .mock("GET", "/")
-            .with_header("content-type", "text/event-stream")
-            .with_body(concat!(
-                "data: {\"ApiVersion\": \"1.5.6\"}\n\n",
-                "data: {\"BlockAdded\": {\"height\":10}}\n\n",
-                "data: {\"BlockAdded\": {\"height\":11}}\n\n",
-                "data: {\"BlockAdded\": {\"height\":12}}\n\n",
-                "data: {\"TransactionProcessed\": \"test\"}\n\n",
-                "data: {\"BlockAdded\": {\"height\":13}}\n\n",
-                "data: {\"BlockAdded\": {\"height\":14}}\n\n",
-            ))
-            .create_async()
-            .await;
-
-        let mut client = EventClient::new(&server.url());
+        let server = create_mock_server(None).await;
+        let mut client = Client::new(&server.url());
         client.connect().await.unwrap();
 
-        let predicate = |data: &SseData| {
-            if let SseData::BlockAdded(block_data) = data {
+        let predicate = |data: &EventInfo| {
+            if let EventInfo::BlockAdded(block_data) = data {
                 if let Some(height) = block_data["height"].as_u64() {
                     return height == 13;
                 }
@@ -155,11 +151,11 @@ mod tests {
 
         let timeout = Duration::from_secs(5);
         let result = client
-            .wait_for_event(EventFilter::BlockAdded, predicate, timeout)
+            .wait_for_event(EventType::BlockAdded, predicate, timeout)
             .await;
 
         match result {
-            Ok(SseData::BlockAdded(block_data)) => {
+            Ok(EventInfo::BlockAdded(block_data)) => {
                 assert_eq!(block_data["height"].as_u64().unwrap(), 13);
             }
             Ok(other_event) => panic!("Expected BlockAdded, got {:?}", other_event),
