@@ -1,4 +1,7 @@
+use eventsource_stream::{Event, EventStreamError};
+use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
+use tokio::sync::oneshot;
 
 //copied from casper-sidecar
 
@@ -20,7 +23,7 @@ pub enum EventType {
 /// Source: https://github.com/casper-network/casper-node/blob/8a9a864212b7c20fc17e1d0106b02c813ffded9d/node/src/components/event_stream_server/sse_server.rs#L56.
 /// TODO: Add full deserialization details.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
-pub enum EventInfo {
+pub enum SseData {
     ApiVersion(casper_types::ProtocolVersion),
     SidecarVersion(serde_json::Value),
     BlockAdded(serde_json::Value),
@@ -33,19 +36,28 @@ pub enum EventInfo {
     Shutdown,
 }
 
-impl EventInfo {
+impl SseData {
     pub fn event_type(&self) -> EventType {
         match self {
-            EventInfo::ApiVersion(_) => EventType::ApiVersion,
-            EventInfo::SidecarVersion(_) => EventType::Other,
-            EventInfo::BlockAdded(_) => EventType::BlockAdded,
-            EventInfo::TransactionAccepted(_) => EventType::TransactionAccepted,
-            EventInfo::TransactionProcessed(_) => EventType::TransactionProcessed,
-            EventInfo::TransactionExpired(_) => EventType::TransactionExpired,
-            EventInfo::Fault(_) => EventType::Fault,
-            EventInfo::FinalitySignature(_) => EventType::FinalitySignature,
-            EventInfo::Step(_) => EventType::Step,
-            EventInfo::Shutdown => EventType::Shutdown,
+            SseData::ApiVersion(_) => EventType::ApiVersion,
+            SseData::SidecarVersion(_) => EventType::SidecarVersion,
+            SseData::BlockAdded(_) => EventType::BlockAdded,
+            SseData::TransactionAccepted(_) => EventType::TransactionAccepted,
+            SseData::TransactionProcessed(_) => EventType::TransactionProcessed,
+            SseData::TransactionExpired(_) => EventType::TransactionExpired,
+            SseData::Fault(_) => EventType::Fault,
+            SseData::FinalitySignature(_) => EventType::FinalitySignature,
+            SseData::Step(_) => EventType::Step,
+            SseData::Shutdown => EventType::Shutdown,
         }
     }
 }
+
+pub enum CoreCommand {
+    Connect(oneshot::Sender<()>),
+    AddOnEventHandler(EventType, Box<Handler>, oneshot::Sender<u64>),
+    RemoveEventHandler(u64, oneshot::Sender<bool>),
+}
+
+pub type Handler = dyn Fn(SseData) + 'static + Send + Sync;
+pub type BoxedEventStream = BoxStream<'static, Result<Event, EventStreamError<reqwest::Error>>>;

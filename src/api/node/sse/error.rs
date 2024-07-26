@@ -1,40 +1,58 @@
+use super::{types::CoreCommand, SseData};
 use eventsource_stream::EventStreamError;
 use thiserror::Error;
 
+//TODO: after implementing proper mock sse revisit the errors below and remove the unnecessary ones
 #[derive(Error, Debug)]
-pub enum SseError {
-    /// Unable to initiate connection with SSE endpoint.
+pub enum ClientError {
     #[error("Failed to connect to SSE endpoint: {0}")]
     ConnectionError(#[from] reqwest::Error),
 
-    /// Unable to run notifier, because there is no available connection.
     #[error("Not connected to event stream")]
     NotConnected,
 
-    /// Connection issue with already opened stream.
-    #[error("Stream error: {0}")]
-    StreamError(#[from] EventStreamError<reqwest::Error>),
-
-    /// Stream was gracefully ended - no more data to read.
-    #[error("Stream exhausted")]
+    #[error("SSE stream exhausted unexpectedly")]
     StreamExhausted,
 
-    /// Recevied invalid handshake event.
     #[error("Invalid handshake event")]
     InvalidHandshake,
 
-    /// Received handshake event, even though it was not expected.
     #[error("Unexpected handshake event")]
     UnexpectedHandshake,
 
-    /// Unable to parse SSE data.
     #[error("Deserialization error: {0}")]
-    DeserializizationError(#[from] serde_json::Error),
+    DeserializationError(#[from] serde_json::Error),
 
-    /// Connection must be stopped, as received shutdown event.
     #[error("Node shutdown")]
     NodeShutdown,
 
     #[error("Timeout while waiting for event")]
     Timeout,
+
+    #[error("Invalid command received")]
+    InvalidCommand,
+
+    #[error("Failed to send command to core: {0}")]
+    CommandSendError(#[from] tokio::sync::mpsc::error::SendError<CoreCommand>),
+
+    #[error("Failed to send ack to client")]
+    ReciverDroppedError(),
+
+    #[error("Failed to recive command from core: {0}")]
+    CommandRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+
+    #[error("Event handler error")]
+    EventHandlerError(#[from] Box<dyn std::error::Error + Send + Sync>),
+
+    #[error("Error registering event handler")]
+    RegisterEventHanbdlerError,
+
+    #[error("Failed to send Event into the channel: {0}")]
+    ChannelInternalError(#[from] tokio::sync::mpsc::error::TrySendError<SseData>),
+
+    #[error("Error reading from event stream:{0}")]
+    EventStreamError(#[from] EventStreamError<reqwest::Error>),
+
+    #[error("No event stream available")]
+    NoEventStreamAvailable,
 }
