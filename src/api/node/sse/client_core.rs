@@ -8,13 +8,12 @@ use futures::stream::TryStreamExt;
 use std::collections::HashMap;
 
 pub struct ClientCore {
-    pub url: String,
-    pub event_stream: Option<BoxedEventStream>,
-    pub next_handler_id: u64,
-    pub event_handlers:
-        HashMap<EventType, HashMap<u64, Box<dyn Fn(SseData) + Send + Sync + 'static>>>,
-    pub id_types: HashMap<u64, EventType>,
-    pub is_connected: bool,
+    url: String,
+    event_stream: Option<BoxedEventStream>,
+    next_handler_id: u64,
+    event_handlers: HashMap<EventType, HashMap<u64, Box<dyn Fn(SseData) + Send + Sync + 'static>>>,
+    id_types: HashMap<u64, EventType>,
+    is_connected: bool,
 }
 
 impl ClientCore {
@@ -65,6 +64,10 @@ impl ClientCore {
         } else {
             false //not found
         }
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.is_connected
     }
 
     pub fn handle_event(&mut self, event: Event) -> Result<(), ClientError> {

@@ -113,7 +113,7 @@ async fn run_client_core(
     mut client_core: ClientCore,
 ) -> Result<(), ClientError> {
     loop {
-        if !client_core.is_connected {
+        if !client_core.is_connected() {
             // Not connected yet, so only process Connect commands.
             if let Some(command) = rx.recv().await {
                 client_core.handle_command(command).await?
