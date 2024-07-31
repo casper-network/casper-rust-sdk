@@ -15,9 +15,10 @@ impl Client {
         let client_core = ClientCore::new(url).await;
 
         let (tx, rx) = mpsc::channel(32);
-        //TODO: not sure how to handle these errors from run_client_core
         let _handle = tokio::spawn(async move {
-            let _ = run_client_core(rx, client_core).await;
+            if let Err(e) = run_client_core(rx, client_core).await {
+                panic!("Unrecoverable client error: {}", e);
+            }
         });
 
         Client { command_sender: tx }
