@@ -58,7 +58,10 @@ impl ClientCore {
     pub fn remove_handler(&mut self, id: u64) -> bool {
         if let Some(event_type) = self.id_types.get(&id) {
             match self.event_handlers.get_mut(&event_type) {
-                Some(handlers_for_type) => handlers_for_type.remove(&id).is_some(),
+                Some(handlers_for_type) => {
+                    self.id_types.remove(&id);
+                    handlers_for_type.remove(&id).is_some()
+                }
                 None => false,
             }
         } else {
