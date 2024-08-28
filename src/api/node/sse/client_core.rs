@@ -7,11 +7,13 @@ use eventsource_stream::{Event, Eventsource};
 use futures::stream::TryStreamExt;
 use std::collections::HashMap;
 
+type EventHandler = Box<dyn Fn(SseData) + Send + Sync + 'static>;
+
 pub struct ClientCore {
     url: String,
     event_stream: Option<BoxedEventStream>,
     next_handler_id: u64,
-    event_handlers: HashMap<EventType, HashMap<u64, Box<dyn Fn(SseData) + Send + Sync + 'static>>>,
+    event_handlers: HashMap<EventType, HashMap<u64, EventHandler>>,
     id_types: HashMap<u64, EventType>,
     is_connected: bool,
 }
