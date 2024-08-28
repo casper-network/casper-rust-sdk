@@ -29,8 +29,8 @@ impl Client {
         self.command_sender
             .send(CoreCommand::Connect(tx))
             .await
-            .map_err(|err| ClientError::CommandSendError(err))?;
-        rx.await.map_err(|err| ClientError::CommandRecvError(err))
+            .map_err(ClientError::CommandSendError)?;
+        rx.await.map_err(ClientError::CommandRecvError)
     }
 
     pub async fn on_event<F>(
@@ -49,8 +49,8 @@ impl Client {
                 tx,
             ))
             .await
-            .map_err(|err| ClientError::CommandSendError(err))?;
-        rx.await.map_err(|err| ClientError::CommandRecvError(err))
+            .map_err(ClientError::CommandSendError)?;
+        rx.await.map_err(ClientError::CommandRecvError)
     }
 
     pub async fn wait_for_event<F>(
@@ -71,7 +71,7 @@ impl Client {
                     // Send the matching event to the channel
                     let _ = tx
                         .try_send(event_info)
-                        .map_err(|err| ClientError::ChannelInternalError(err));
+                        .map_err(ClientError::ChannelInternalError);
                 }
             })
             .await?;
@@ -103,8 +103,8 @@ impl Client {
         self.command_sender
             .send(CoreCommand::RemoveEventHandler(id, tx))
             .await
-            .map_err(|err| ClientError::CommandSendError(err))?;
-        rx.await.map_err(|err| ClientError::CommandRecvError(err))
+            .map_err(ClientError::CommandSendError)?;
+        rx.await.map_err(ClientError::CommandRecvError)
     }
 }
 
