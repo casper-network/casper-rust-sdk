@@ -113,7 +113,7 @@ mod tests {
 
         // Test 3: Removal of the handler, the flag should not be changed by new events
         let res = client_core.remove_handler(handler_id);
-        assert_eq!(res, true);
+        assert!(res);
 
         mock_server.send_event(block_added_event).await.unwrap();
 
