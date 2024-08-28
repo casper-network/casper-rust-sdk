@@ -14,7 +14,7 @@ impl MockSse {
     pub async fn start() -> Self {
         let addr: SocketAddr = "127.0.0.1:0".parse().unwrap(); // Use port 0 for dynamic allocation
         let listener = TcpListener::bind(addr).await.unwrap();
-        let addr = format!("http://{}", listener.local_addr().unwrap().to_string());
+        let addr = format!("http://{}", listener.local_addr().unwrap());
         let (tx, mut rx) = mpsc::channel(32);
 
         tokio::spawn(async move {
