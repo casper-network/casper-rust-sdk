@@ -1,0 +1,29 @@
+name: check
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+    steps:
+      - uses: actions/checkout@main
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: cachix/cachix-action@master
+        with:
+          name: cspr
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: System Info
+        run: |
+          uname -a
+          nix --version
+
+      - name: casper-rust-sdk (x86_64-darwin)
+        run: nix build -L --no-link --show-trace .#packages.x86_64-darwin.casper-rust-sdk
