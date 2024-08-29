@@ -1,3 +1,4 @@
+#[cfg(feature = "cctl-tests")]
 #[cfg(test)]
 mod cctl_integration_tests {
     use casper_sdk_rs::api::node::sse::{client::Client, types::EventType, SseData};
