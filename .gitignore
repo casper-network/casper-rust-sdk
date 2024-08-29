@@ -13,3 +13,8 @@ target/
 # Added by cargo
 
 /target
+
+# Nix related
+.envrc
+.direnv
+result
