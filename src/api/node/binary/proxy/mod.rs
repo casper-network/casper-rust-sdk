@@ -1,2 +1,3 @@
 use config::ProxyConfig;
-use defaults;
+use constants;
+use proxy::Proxy;

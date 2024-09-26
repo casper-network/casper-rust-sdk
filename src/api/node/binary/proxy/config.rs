@@ -39,15 +39,18 @@ pub struct ExponentialBackoffConfig {
 
 #[derive(Clone, DataSize, Debug, Deserialize, PartialEq, Eq)]
 pub enum MaxAttempts {
+    /// Retry to the end of time.
     Infinite,
+    /// Retry N times.
     Finite(usize),
 }
 
 impl MaxAttempts {
-    pub fn can_attempt(&self, current_attempt: usize) -> bool {
+    /// Predicate: returns true if a further connection is to be attempted.
+    pub fn can_attempt(&self, count_of_attempts: usize) -> bool {
         match self {
             MaxAttempts::Infinite => true,
-            MaxAttempts::Finite(max_attempts) => *max_attempts >= current_attempt,
+            MaxAttempts::Finite(max_attempts) => *max_attempts >= count_of_attempts,
         }
     }
 }
