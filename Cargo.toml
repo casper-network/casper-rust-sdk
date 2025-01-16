@@ -8,8 +8,19 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/casper-network/casper-sdk-rs"
 
+# [dependencies]
+# l1-types = { path = "../casper-node/types", package = "casper-types", features = [
+#     "std",
+# ] }
+# l1-binary-port = { path = "../casper-node/binary_port", package = "casper-binary-port" }
+
+
 [dependencies]
-l1-types = { path = "../casper-node/types", package = "casper-types", features = [
-    "std",
-] }
-l1-binary-port = { path = "../casper-node/binary_port", package = "casper-binary-port" }
+eventsource-stream = "0.2.3"
+reqwest = { version = "0.12.5", features = ["json", "stream"] }
+serde = { version = "1.0.189", features = ["derive"] }
+serde_json = "1.0.107"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3.30"
+thiserror = "1.0"
+casper-types = "4.0.1"

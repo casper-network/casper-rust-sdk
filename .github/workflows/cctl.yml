@@ -1,0 +1,24 @@
+name: Casper 2.0-RC3 CCTL
+on: [push]
+jobs:
+  build_and_test:
+    runs-on: ubuntu-22.04
+    services:
+      casper-cctl:
+        image: koxu1996/casper-cctl:2.0-rc3
+        ports:
+          - 14101:14101 # RPC
+          - 21101:21101 # SSE
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test RPC - info_get_status call
+        run: >
+          curl --silent --location 'http://127.0.0.1:21101/rpc'
+          --header 'Content-Type: application/json'
+          --data '{"id": 1, "jsonrpc": "2.0", "method": "info_get_status", "params": []}'
+          | jq
+      - name: Test SSE - read stream for 5 seconds
+        continue-on-error: true
+        run: |
+          curl --silent --location http://127.0.0.1:14101/events --max-time 5
+          (($? != 28)) && { printf '%s\n' "Unexpected exit code"; exit 1; }
