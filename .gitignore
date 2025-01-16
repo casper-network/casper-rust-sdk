@@ -12,6 +12,7 @@ target/
 
 # Temporary folders.
 /tmp
+tmp/
 
 # Local files
 TODO.txt
