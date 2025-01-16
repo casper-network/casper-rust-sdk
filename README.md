@@ -10,3 +10,7 @@
 **NOTE**
 
 Library targets casper-node 2.0+, i.e. it is **does not** support 1.X series.
+
+# WORK IN PROGRESS
+
+This is very much WIP ... do not even attempt to utilise for production purposes.
