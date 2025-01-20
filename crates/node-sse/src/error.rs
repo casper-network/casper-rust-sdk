@@ -3,13 +3,17 @@ use eventsource_client::Error as EventStreamError;
 use reqwest;
 use thiserror::Error;
 
+// ------------------------------------------------------------------------
+// Declarations.
+// ------------------------------------------------------------------------
+
 #[derive(Error, Debug)]
 pub enum ClientError {
     #[error("Failed to send command to core: {0}")]
-    CommandSendError(#[from] tokio::sync::mpsc::error::SendError<CoreCommand>),
+    CommandDispatchError(#[from] tokio::sync::mpsc::error::SendError<CoreCommand>),
 
-    #[error("Failed to recive command from core: {0}")]
-    CommandRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+    #[error("Failed to receive command from core: {0}")]
+    CommandReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
 
     #[error("Failed to connect to SSE endpoint: {0}")]
     ConnectionError(#[from] reqwest::Error),
