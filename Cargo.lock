@@ -926,6 +926,7 @@ name = "node-sse"
 version = "0.1.0"
 dependencies = [
  "eventsource-client",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror",
