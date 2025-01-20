@@ -9,9 +9,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ClientError {
-    #[error("Failed to send command to core: {0}")]
-    CommandDispatchError(#[from] tokio::sync::mpsc::error::SendError<CoreCommand>),
-
+    // #[error("Failed to send command to core: {0}")]
+    // CommandDispatchError(#[from] tokio::sync::mpsc::error::SendError<CoreCommand>),
     #[error("Failed to receive command from core: {0}")]
     CommandReceiveError(#[from] tokio::sync::oneshot::error::RecvError),
 

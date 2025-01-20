@@ -42,25 +42,7 @@ impl Proxy {
 }
 
 impl ProxyConfig {
-    pub fn new(
-        backoff_factor: u32,
-        delay_on_retry: Duration,
-        max_delay_between_reconnects: Duration,
-        reconnect_on_error: bool,
-        retry_initial_connection: bool,
-        url: String,
-    ) -> Self {
-        Self {
-            backoff_factor,
-            delay_on_retry,
-            max_delay_between_reconnects,
-            reconnect_on_error,
-            retry_initial_connection,
-            url,
-        }
-    }
-
-    pub fn new_from_defaults(url: String) -> Self {
+    pub fn new(url: String) -> Self {
         Self {
             backoff_factor: 2,
             delay_on_retry: Duration::from_secs(2),
@@ -69,5 +51,32 @@ impl ProxyConfig {
             retry_initial_connection: true,
             url,
         }
+    }
+}
+
+impl ProxyConfig {
+    pub fn backoff_factor<'a>(&'a mut self, value: u32) -> &'a mut ProxyConfig {
+        self.backoff_factor = value;
+        self
+    }
+
+    pub fn delay_on_retry<'a>(&'a mut self, value: Duration) -> &'a mut ProxyConfig {
+        self.delay_on_retry = value;
+        self
+    }
+
+    pub fn max_delay_between_reconnects<'a>(&'a mut self, value: Duration) -> &'a mut ProxyConfig {
+        self.max_delay_between_reconnects = value;
+        self
+    }
+
+    pub fn reconnect_on_error<'a>(&'a mut self, value: bool) -> &'a mut ProxyConfig {
+        self.reconnect_on_error = value;
+        self
+    }
+
+    pub fn retry_initial_connection<'a>(&'a mut self, value: bool) -> &'a mut ProxyConfig {
+        self.retry_initial_connection = value;
+        self
     }
 }
