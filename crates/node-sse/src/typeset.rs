@@ -1,45 +1,81 @@
-// use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 
 // ------------------------------------------------------------------------
 // Declarations.
 // ------------------------------------------------------------------------
 
-// #[derive(Clone, Copy, Eq, PartialEq, Debug, Hash)]
-// pub enum EventType {
-//     ApiVersion,
-//     SidecarVersion,
-//     BlockAdded,
-//     TransactionAccepted,
-//     TransactionProcessed,
-//     TransactionExpired,
-//     Fault,
-//     FinalitySignature,
-//     Step,
-//     Shutdown,
-// }
+// Event types emmitted by a node's SSE port.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum EventType {
+    ApiVersion,
+    BlockAdded,
+    Fault,
+    FinalitySignature,
+    Shutdown,
+    SidecarVersion,
+    Step,
+    TransactionAccepted,
+    TransactionExpired,
+    TransactionProcessed,
+}
 
-// #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
-// pub enum SseData {
-//     ApiVersion(serde_json::Value),
-//     SidecarVersion(serde_json::Value),
-//     BlockAdded(serde_json::Value),
-//     TransactionAccepted(serde_json::Value),
-//     TransactionProcessed(serde_json::Value),
-//     TransactionExpired(serde_json::Value),
-//     Fault(serde_json::Value),
-//     FinalitySignature(serde_json::Value),
-//     Step(serde_json::Value),
-//     Shutdown,
-// }
+// Event data associated with an SSE event.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum EventData {
+    ApiVersion(EventPayload),
+    BlockAdded(EventPayload),
+    Fault(EventPayload),
+    FinalitySignature(EventPayload),
+    Shutdown,
+    SidecarVersion(EventPayload),
+    Step(EventPayload),
+    TransactionAccepted(EventPayload),
+    TransactionExpired(EventPayload),
+    TransactionProcessed(EventPayload),
+}
 
-// ------------------------------------------------------------------------
-// Constructors.
-// ------------------------------------------------------------------------
+// Payload associated with event data.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum EventPayload {
+    Json(JsonValue),
+    Binary(Vec<u8>),
+}
 
-// ------------------------------------------------------------------------
-// Accessors.
-// ------------------------------------------------------------------------
+// Supported payload codecs.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum EventPayloadCodec {
+    Json,
+    Binary,
+}
 
 // ------------------------------------------------------------------------
 // Methods.
 // ------------------------------------------------------------------------
+
+impl EventData {
+    pub fn event_type(&self) -> EventType {
+        EventType::from(self)
+    }
+}
+
+// ------------------------------------------------------------------------
+// Traits.
+// ------------------------------------------------------------------------
+
+impl From<&EventData> for EventType {
+    fn from(value: &EventData) -> Self {
+        match value {
+            EventData::ApiVersion(_) => EventType::ApiVersion,
+            EventData::SidecarVersion(_) => EventType::SidecarVersion,
+            EventData::BlockAdded(_) => EventType::BlockAdded,
+            EventData::TransactionAccepted(_) => EventType::TransactionAccepted,
+            EventData::TransactionProcessed(_) => EventType::TransactionProcessed,
+            EventData::TransactionExpired(_) => EventType::TransactionExpired,
+            EventData::Fault(_) => EventType::Fault,
+            EventData::FinalitySignature(_) => EventType::FinalitySignature,
+            EventData::Step(_) => EventType::Step,
+            EventData::Shutdown => EventType::Shutdown,
+        }
+    }
+}

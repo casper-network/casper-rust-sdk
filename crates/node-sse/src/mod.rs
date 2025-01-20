@@ -1,1 +1,3 @@
-// mod typeset;
+mod typeset;
+
+use typeset::{EventData, EventType};

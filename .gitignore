@@ -11,6 +11,8 @@ target/
 *.pdb
 
 # Temporary folders.
+/hack
+hack/
 /tmp
 tmp/
 
