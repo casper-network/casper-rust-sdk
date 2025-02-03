@@ -7,7 +7,7 @@ use thiserror::Error;
 // Declarations.
 // ------------------------------------------------------------------------
 
-#[derive(Error, Debug)]
+#[derive(Debug, Error)]
 pub enum ClientError {
     // #[error("Failed to send command to core: {0}")]
     // CommandDispatchError(#[from] tokio::sync::mpsc::error::SendError<CoreCommand>),
@@ -44,3 +44,6 @@ pub enum ClientError {
     #[error("Unexpected handshake event")]
     UnexpectedHandshakeError,
 }
+
+// Library invocation result wrapper.
+pub type ClientResult<T> = std::result::Result<T, ClientError>;

@@ -1,6 +1,5 @@
 use async_trait::async_trait;
-use eventsource_client::ReconnectOptions;
-use eventsource_client::{self as es, Client};
+use eventsource_client::{self as es, Client, ReconnectOptions};
 use futures::{Stream, TryStreamExt};
 use std::time::Duration;
 
@@ -44,7 +43,7 @@ pub struct ProxyConfig {
 
 // Proxy configuration builder.
 pub struct ProxyConfigBuilder {
-    // Built configuration instance.
+    // Wrapped configuration instance to be built.
     cfg: ProxyConfig,
 }
 
@@ -105,15 +104,71 @@ impl ProxyConfig {
 
 impl ProxyConfigBuilder {
     pub fn new() -> Self {
-        let cfg = ProxyConfig {
-            ..Default::default()
-        };
-        Self { cfg }
+        Self {
+            cfg: ProxyConfig {
+                ..Default::default()
+            },
+        }
+    }
+}
+
+// ------------------------------------------------------------------------
+// Constructors: builders.
+// ------------------------------------------------------------------------
+
+impl ProxyConfigBuilder {
+    // Sets factor by which delays between reconnect attempts will exponentially increase.
+    pub fn backoff_factor(mut self, value: u32) -> Self {
+        self.cfg.backoff_factor = value;
+        self
+    }
+
+    // Sets delay to await before trying to reconnect
+    pub fn delay_on_retry(mut self, value: Duration) -> Self {
+        self.cfg.delay_on_retry = value;
+        self
+    }
+
+    // Sets maximum delay between reconnects.
+    pub fn max_delay_between_reconnects(mut self, value: Duration) -> Self {
+        self.cfg.max_delay_between_reconnects = value;
+        self
+    }
+
+    // Sets flag enabling or disabling reconnection on stream error.
+    pub fn reconnect_on_error(mut self, value: bool) -> Self {
+        self.cfg.reconnect_on_error = value;
+        self
+    }
+
+    // Sets flag enabling or disabling retry if initial server connection fails.
+    pub fn retry_initial_connection(mut self, value: bool) -> Self {
+        self.cfg.retry_initial_connection = value;
+        self
+    }
+
+    /// Finish building `ProxyConfig` instance.
+    pub fn build(self) -> ProxyConfig {
+        self.cfg
+    }
+}
+
+// ------------------------------------------------------------------------
+// Traits.
+// ------------------------------------------------------------------------
+
+impl Default for Proxy {
+    // Default instance connects to node #1 within a local CCTL network.
+    fn default() -> Self {
+        Self {
+            config: ProxyConfig::default(),
+            handler: Option::None,
+        }
     }
 }
 
 impl Default for ProxyConfig {
-    // Default proxy configuration attempts to connect to node #1 within a local CCTL network.
+    // Default instance connects to node #1 within a local CCTL network.
     fn default() -> Self {
         Self {
             backoff_factor: 2,
@@ -123,42 +178,6 @@ impl Default for ProxyConfig {
             retry_initial_connection: true,
             url: String::from("http://localhost:14101/events"),
         }
-    }
-}
-
-// ------------------------------------------------------------------------
-// Constructors: builders.
-// ------------------------------------------------------------------------
-
-impl ProxyConfig {
-    // Sets factor by which delays between reconnect attempts will exponentially increase.
-    pub fn backoff_factor<'a>(&'a mut self, value: u32) -> &'a mut ProxyConfig {
-        self.backoff_factor = value;
-        self
-    }
-
-    // Sets delay to await before trying to reconnect
-    pub fn delay_on_retry<'a>(&'a mut self, value: Duration) -> &'a mut ProxyConfig {
-        self.delay_on_retry = value;
-        self
-    }
-
-    // Sets maximum delay between reconnects.
-    pub fn max_delay_between_reconnects<'a>(&'a mut self, value: Duration) -> &'a mut ProxyConfig {
-        self.max_delay_between_reconnects = value;
-        self
-    }
-
-    // Sets flag enabling or disabling reconnection on stream error.
-    pub fn reconnect_on_error<'a>(&'a mut self, value: bool) -> &'a mut ProxyConfig {
-        self.reconnect_on_error = value;
-        self
-    }
-
-    // Sets flag enabling or disabling retry if initial server connection fails.
-    pub fn retry_initial_connection<'a>(&'a mut self, value: bool) -> &'a mut ProxyConfig {
-        self.retry_initial_connection = value;
-        self
     }
 }
 
@@ -196,9 +215,9 @@ impl Proxy {
     }
 }
 
-impl From<&ProxyConfig> for ReconnectOptions {
+impl From<&ProxyConfig> for es::ReconnectOptions {
     fn from(value: &ProxyConfig) -> Self {
-        ReconnectOptions::reconnect(value.reconnect_on_error)
+        es::ReconnectOptions::reconnect(value.reconnect_on_error)
             .backoff_factor(value.backoff_factor)
             .delay(value.delay_on_retry)
             .delay_max(value.max_delay_between_reconnects)
